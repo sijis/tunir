@@ -15,9 +15,9 @@ except ImportError:
     from unittest.mock import patch, Mock
 
 import tunirlib
-from tunirlib.tunirutils import Result, system
+from tunirlib.utils import Result, system
 from tunirlib import main
-from tunirlib import tunirutils, tunirmultihost, tunirvagrant
+from tunirlib import utils, multihost, vagrant
 
 @contextmanager
 def captured_output():
@@ -62,10 +62,10 @@ class TunirTests(unittest.TestCase):
     def test_match_vm_numbers(self):
         path = './testvalues/multihost.txt'
         vms = ['vm1', 'vm2']
-        self.assertTrue(tunirutils.match_vm_numbers(vms, path))
+        self.assertTrue(utils.match_vm_numbers(vms, path))
         vms = ['vm1',]
         with captured_output() as (out, err):
-            self.assertFalse(tunirutils.match_vm_numbers(vms, path))
+            self.assertFalse(utils.match_vm_numbers(vms, path))
             self.assertIn('vm2', out.getvalue())
 
     def test_ansible(self):
@@ -76,17 +76,17 @@ class TunirTests(unittest.TestCase):
         old_inventory = os.path.join(tdir, 'inventory')
         with open(old_inventory, 'w') as fobj:
             fobj.write('[web]\nvm1\nvm2')
-        tunirutils.create_ansible_inventory(vms, new_inventory)
+        utils.create_ansible_inventory(vms, new_inventory)
         self.assertTrue(os.path.exists(new_inventory))
         with open(new_inventory) as fobj:
             data = fobj.read()
-        tunirutils.clean_tmp_dirs([tdir,])
+        utils.clean_tmp_dirs([tdir,])
         self.assertIn('vm2 ansible_ssh_host=192.168.1.102 ansible_ssh_user=fedora\n', data)
         self.assertIn('vm1 ansible_ssh_host=192.168.1.100 ansible_ssh_user=fedora\n', data)
         self.assertIn('[web]\nvm1\nvm2', data)
 
 
-    @patch('tunirlib.tunirutils.run')
+    @patch('tunirlib.utils.run')
     @patch('codecs.open')
     @patch('subprocess.call')
     @patch('subprocess.Popen')
@@ -95,7 +95,7 @@ class TunirTests(unittest.TestCase):
     @patch('sys.exit')
     @patch('os.kill')
     @patch('paramiko.SSHClient')
-    @patch('tunirlib.tunirmultihost.boot_qcow2')
+    @patch('tunirlib.multihost.boot_qcow2')
     def test_multihost(self,p_br,p_sc,p_kill, p_exit, p_sleep, p_system,p_usystem, p_scall, p_codecs,p_run):
         res = StupidProcess()
         p_br.side_effect = [(res, 'ABCD'),(res,'XYZ')]
@@ -125,7 +125,7 @@ class TunirTests(unittest.TestCase):
 
 
         with captured_output() as (out, err):
-            tunirmultihost.start_multihost('multihost', './testvalues/multihost.txt', debug=False, config_dir='./testvalues/')
+            multihost.start_multihost('multihost', './testvalues/multihost.txt', debug=False, config_dir='./testvalues/')
 
             #self.assertIn("Passed:1", out.getvalue())
             #self.assertIn("Job status: True", out.getvalue())
@@ -138,36 +138,36 @@ class ExecuteTests(unittest.TestCase):
     Tests the execute function.
     """
 
-    @patch('tunirlib.tunirutils.run')
+    @patch('tunirlib.utils.run')
     def test_execute(self, t_run):
         config = {"host_string": "127.0.0.1",
                   "user": "fedora"}
         r1 = Result("result1")
         r1.return_code = 0
         t_run.return_value=r1
-        res, negative = tunirutils.execute(config, 'ls')
+        res, negative = utils.execute(config, 'ls')
         self.assertEqual(str(res), "result1")
         self.assertEqual(negative, "no")
 
-    @patch('tunirlib.tunirutils.run')
+    @patch('tunirlib.utils.run')
     def test_execute_nagative(self, t_run):
         config = {"host_string": "127.0.0.1",
                   "user": "fedora"}
         r1 = Result("result1")
         r1.return_code = 127
         t_run.return_value=r1
-        res, negative = tunirutils.execute(config, '@@ ls')
+        res, negative = utils.execute(config, '@@ ls')
         self.assertEqual(str(res), "result1")
         self.assertEqual(negative, "yes")
 
-    @patch('tunirlib.tunirutils.run')
+    @patch('tunirlib.utils.run')
     def test_execute_nongating(self, t_run):
         config = {"host_string": "127.0.0.1",
                   "user": "fedora"}
         r1 = Result("result1")
         r1.return_code = 127
         t_run.return_value=r1
-        res, negative = tunirutils.execute(config, '## ls')
+        res, negative = utils.execute(config, '## ls')
         self.assertEqual(str(res), "result1")
         self.assertEqual(negative, "dontcare")
 
@@ -176,7 +176,7 @@ class UpdateResultTest(unittest.TestCase):
     Tests the update_result function.
     """
     def setUp(self):
-        tunirutils.STR = OrderedDict()
+        utils.STR = OrderedDict()
 
     def test_updateresult(self):
 
@@ -188,7 +188,7 @@ class UpdateResultTest(unittest.TestCase):
         r3.return_code = 1
         values = [(r1, 'no', 'ls'), (r2, 'yes', '@@ sudo reboot'), (r3, 'dontcare', '## ping foo')]
         for res, negative, command in values:
-            tunirutils.update_result(res, command, negative)
+            utils.update_result(res, command, negative)
 
         res = [True, True, False]
         for out, result in zip(tunirlib.STR.items(), res):
@@ -198,13 +198,13 @@ class UpdateResultTest(unittest.TestCase):
 class TestVagrant(unittest.TestCase):
     "To test the vagrant class"
 
-    @patch('tunirlib.tunirvagrant.system')
+    @patch('tunirlib.vagrant.system')
     def test_refresh_vol_pool(self, t_sys):
         line = """ Name                 Path
 ------------------------------------------------------------------------------
  tunir-box.qcow2        /var/lib/libvirt/images/tunir-box.qcow2 """
         t_sys.return_value = (line,"no error",0)
-        tunirvagrant.refresh_storage_pool()
+        vagrant.refresh_storage_pool()
         self.assertTrue(t_sys.called)
         t_sys.assert_called_with('virsh pool-list')
 

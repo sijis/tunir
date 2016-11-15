@@ -19,7 +19,7 @@ import os
 import time
 import logging
 import subprocess
-from .tunirutils import system
+from .utils import system
 from typing import List, Dict, Set, Tuple, Union, Callable, TypeVar, Any, cast
 
 log = logging.getLogger('tunir')

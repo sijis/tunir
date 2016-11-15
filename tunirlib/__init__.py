@@ -2,10 +2,10 @@ import os
 import sys
 import json
 import argparse
-from .tunirvagrant import vagrant_and_run
-from .tuniraws import aws_and_run
-from .tunirmultihost import start_multihost
-from .tunirutils import run_job, Result
+from .vagrant import vagrant_and_run
+from .aws import aws_and_run
+from .multihost import start_multihost
+from .utils import run_job, Result
 from collections import OrderedDict
 import logging
 from systemd.journal import JournalHandler

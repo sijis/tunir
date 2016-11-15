@@ -17,9 +17,9 @@ except ImportError:
     import configparser as ConfigParser
 import logging
 from pprint import pprint
-from .tunirutils import run, clean_tmp_dirs, system, run_job
-from .tunirutils import match_vm_numbers, create_ansible_inventory
-from .tunirutils import IPException
+from .utils import run, clean_tmp_dirs, system, run_job
+from .utils import match_vm_numbers, create_ansible_inventory
+from .utils import IPException
 from .testvm import  create_user_data, create_seed_img
 log = logging.getLogger('tunir')
 
