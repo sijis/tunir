@@ -20,6 +20,7 @@ from libcloud.compute.types import Provider
 from libcloud.compute.providers import get_driver
 from typing import List, Dict, Set, Tuple, Union, Callable, TypeVar, Any, cast
 
+
 class EC2Node(object):
     def __init__(self, ACCESS_ID, SECRET_KEY, IMAGE_ID, SIZE_ID, region="us-west-1",
                  aki=None, keyname='tunir', security_group='ssh', virt_type='paravirtual'):
@@ -30,14 +31,14 @@ class EC2Node(object):
         self.driver = cls(ACCESS_ID, SECRET_KEY, region=region)
         sizes = self.driver.list_sizes()
         images = self.driver.list_images()
-        self.size = None # type: Any
-        self.image = None # type: Any
+        self.size = None  # type: Any
+        self.image = None  # type: Any
         self.aki = aki
         self.state = 'pending'
         self.virt_type = virt_type
         self.failed = False
-        self.node = None # type: Any
-        self.ip = None # type: str
+        self.node = None  # type: Any
+        self.ip = None   # type: str
         print("AWS job type:", virt_type)
         print("AMI {0}, AKI {1} SIZE {2} REGION {3}".format(IMAGE_ID, aki, SIZE_ID, region))
         try:
@@ -55,7 +56,7 @@ class EC2Node(object):
             else:
                 self.node = self.driver.create_node(name='tunir_test_node',
                                                     image=self.image, size=self.size, ex_keyname=keyname,
-                                                    ex_security_groups=[security_group, ], kernel_id=aki )
+                                                    ex_security_groups=[security_group, ], kernel_id=aki)
             # Now we will try for 3 minutes to get an ip.
             for i in range(5):
                 time.sleep(30)

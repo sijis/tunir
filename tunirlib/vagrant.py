@@ -18,9 +18,8 @@
 import os
 import time
 import logging
-import subprocess
 from .utils import system
-from typing import List, Dict, Set, Tuple, Union, Callable, TypeVar, Any, cast
+from typing import List, Dict, Set, Union, Callable, TypeVar, Any, cast
 
 log = logging.getLogger('tunir')
 
@@ -37,6 +36,7 @@ def refresh_vol_pool():
             if len(words) == 2:
                 if words[0].startswith('tunir-box'):
                     system('virsh vol-delete {0} default'.format(words[0]))
+
 
 def refresh_storage_pool():
     '''Refreshes libvirt storage pool.
@@ -79,7 +79,7 @@ class Vagrant(object):
         self.name = name
         self.image_url = image_url
         self.path = path
-        self.keys = None # type: Dict[str, str]
+        self.keys = None  # type: Dict[str, str]
         self.failed = False
         self.provider = provider
 
@@ -105,7 +105,7 @@ end'''
   end
 end'''
 
-        self.vagrantfile = None # type: str
+        self.vagrantfile = None  # type: str
         if self.provider == 'libvirt':
             self.vagrantfile = libvirt_config
             refresh_storage_pool()
@@ -118,8 +118,6 @@ end'''
 
         print("Wrote Vagrant config file.")
         # Now actually register that image
-
-        basename = os.path.basename(image_url)
 
         print("Adding vagrant box.")
         cmd = 'vagrant box add {0} --name {1}'.format(image_url, name)
@@ -148,7 +146,6 @@ end'''
 
         time.sleep(3)
         print("Time to get Vagrant ssh-config")
-
 
         # Now let us try to get the ssh-config
         cmd = 'vagrant ssh-config'
@@ -181,8 +178,9 @@ end'''
             print(err)
 
         if self.provider == 'libvirt':
-            refresh_vol_pool() # Remove libvirt cache
+            refresh_vol_pool()  # Remove libvirt cache
         os.chdir(self.original_path)
+
 
 def vagrant_and_run(config, path='/var/run/tunir/'):
     """
@@ -193,15 +191,13 @@ def vagrant_and_run(config, path='/var/run/tunir/'):
     """
     v = Vagrant(config['image'], memory=config['ram'],
                 provider=config.get('provider', 'libvirt'), path=path)
-    if v.keys: # Means we have the box up, and also the ssh config
+    if v.keys:  # Means we have the box up, and also the ssh config
         config['host_string'] = v.keys['HostName']
         config['ip'] = v.keys['HostName']
         config['key'] = v.keys['IdentityFile'].strip('"')
         config['port'] = v.keys['Port']
 
     return v, config
-
-
 
 
 if __name__ == '__main__':

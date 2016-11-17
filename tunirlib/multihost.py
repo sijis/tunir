@@ -20,8 +20,9 @@ from pprint import pprint
 from .utils import run, clean_tmp_dirs, system, run_job
 from .utils import match_vm_numbers, create_ansible_inventory
 from .utils import IPException
-from .testvm import  create_user_data, create_seed_img
+from .testvm import create_user_data, create_seed_img
 log = logging.getLogger('tunir')
+
 
 def true_test(vms, private_key, command='cat /proc/cpuinfo'):
     """
@@ -33,19 +34,20 @@ def true_test(vms, private_key, command='cat /proc/cpuinfo'):
     :param command: The actual command to run.
     :return: None
     """
-    "Just to test the connection of a vm"
+    #Just to test the connection of a vm
     key = create_rsa_key(private_key)
     for vm in vms.values():
         for i in range(5):
             try:
-                res = run(vm['ip'], port=vm['port'], user=vm['user'], command=command,pkey=key, debug=False)
+                res = run(vm['ip'], port=vm['port'], user=vm['user'], command=command, pkey=key, debug=False)
                 break
             except Exception as e:
                 print("Try {0} failed for IP injection to /etc/hosts.".format(i))
-                if i == 4: # If it does not allow in 2 minutes, something is super wrong
+                if i == 4:  # If it does not allow in 2 minutes, something is super wrong
                     raise e
                 time.sleep(30)
                 continue
+
 
 def inject_ip_to_vms(vms, private_key):
     """
@@ -55,17 +57,17 @@ def inject_ip_to_vms(vms, private_key):
     :param private_key: String version of the private key
     :return: None
     """
-
     text = "\n"
     for k, v in vms.items():
         line = ''
         # ip hostname format for /etc/hosts
         if 'hostname' in v:
-            line = "{0}    {1} {2}\n".format(v['ip'],k,v['hostname'])
+            line = "{0}    {1} {2}\n".format(v['ip'], k, v['hostname'])
         else:
-            line = "{0}    {1}\n".format(v['ip'],k)
+            line = "{0}    {1}\n".format(v['ip'], k)
         text += line
     true_test(vms, private_key, """sudo sh -c 'echo -e "{0}" >> /etc/hosts'""".format(text))
+
 
 def create_rsa_key(private_key):
     """ Creates the RSAKey for paramiko.
@@ -77,6 +79,7 @@ def create_rsa_key(private_key):
     key = RSAKey.from_private_key(fobj)
     return key
 
+
 def generate_sshkey(bits=2048):
     '''
     Returns private key and public key, and the key object
@@ -85,6 +88,7 @@ def generate_sshkey(bits=2048):
     public_key = key.publickey().exportKey("OpenSSH")
     private_key = key.exportKey("PEM")
     return private_key, public_key, key
+
 
 def scan_arp(macaddr):
     "Find the ip for the given mac addr"
@@ -95,6 +99,7 @@ def scan_arp(macaddr):
         if len(words) > 3:
             if words[3].strip() == macaddr:
                 return words[1].strip('()')
+
 
 def read_multihost_config(filepath):
     '''Reads the given filepath, and returns a dict with all required information.
@@ -109,16 +114,18 @@ def read_multihost_config(filepath):
         result[sec] = out
     return result
 
+
 def random_mac():
     """
     Generates a random MAC address
     :return: A string containing the random MAC address.
     """
-    mac = [ 0x00, 0x16, 0x3e,\
-        random.randint(0x00, 0x7f),\
-        random.randint(0x00, 0xff),\
-        random.randint(0x00, 0xff) ]
+    mac = [0x00, 0x16, 0x3e,
+           random.randint(0x00, 0x7f),
+           random.randint(0x00, 0xff),
+           random.randint(0x00, 0xff)]
     return ':'.join(map(lambda x: "%02x" % x, mac))
+
 
 def boot_qcow2(image, seed, ram=1024, vcpu='1'):
     "Boots the image with a seed image"
@@ -138,7 +145,7 @@ def boot_qcow2(image, seed, ram=1024, vcpu='1'):
                  'nic,macaddr={0},model=virtio'.format(mac),
                  '-display',
                  'none'
-                 ]
+                ]
     print(' '.join(boot_args))
     vm = subprocess.Popen(boot_args)
 
@@ -146,8 +153,9 @@ def boot_qcow2(image, seed, ram=1024, vcpu='1'):
 
     return vm, mac
 
+
 def create_ssh_metadata(path, pub_key, private_key=None):
-    "Creates the user data with ssh key"
+    """Creates the user data with ssh key"""
     text = """instance-id: iid-123456
 local-hostname: tunirtests
 public-keys:
@@ -160,14 +168,15 @@ public-keys:
     # just for testing
     if private_key:
         pname = os.path.join(path, 'private.pem')
-        with open(pname,'w') as fobj:
+        with open(pname, 'w') as fobj:
             fobj.write(private_key)
         os.system('chmod 0600 {0}'.format(pname))
 
+
 def start_multihost(jobname, jobpath, debug=False, oldconfig=None, config_dir='.'):
-    "Start the executation here."
+    """Start the execution here."""
     temppath = tempfile.mktemp()
-    extra_config = {'result_path' : temppath}
+    extra_config = {'result_path': temppath}
     print('Result file at: {0}'.format(temppath))
     status = 0
     ansible_inventory_path = None
@@ -178,8 +187,8 @@ def start_multihost(jobname, jobpath, debug=False, oldconfig=None, config_dir='.
         print(config_path)
     config = None
     vcpu = '1'
-    vms = {} # Empty directory to store vm details
-    dirs_to_delete = [] # We will delete those at the end
+    vms = {}  # Empty directory to store vm details
+    dirs_to_delete = []  # We will delete those at the end
     vm_keys = None
     if not oldconfig:
         config = read_multihost_config(config_path)
@@ -200,7 +209,7 @@ def start_multihost(jobname, jobpath, debug=False, oldconfig=None, config_dir='.
             config['general']['pkey'] = create_rsa_key(data)
             private_key = data
             config['general']['keypath'] = config['general']['key']
-    else: # For a single vm job or Vagrant or AWS
+    else:  # For a single vm job or Vagrant or AWS
         config = {'vm1': oldconfig}
         config['general'] = {'ansible_dir': oldconfig.get('ansible_dir', None)}
         if 'key' in oldconfig:
@@ -212,8 +221,8 @@ def start_multihost(jobname, jobpath, debug=False, oldconfig=None, config_dir='.
             private_key = data
             config['general']['key'] = data
         ram = oldconfig.get('ram', '1024')
-        vm_keys = ['vm1',]
-    #TODO Parse the job file first
+        vm_keys = ['vm1', ]
+    # TODO: Parse the job file first
     if not os.path.exists(jobpath):
         print("Missing job file {0}".format(jobpath))
         return False
@@ -256,7 +265,7 @@ def start_multihost(jobname, jobpath, debug=False, oldconfig=None, config_dir='.
                 image_path = config[vm_c].get('image')
                 os.system('cp {0} {1}'.format(image_path, current_d))
                 image = os.path.join(current_d, os.path.basename(image_path))
-                log.info("Booting {0}".format(image))
+                log.info("Booting %s", image)
 
                 vm, mac = boot_qcow2(image, os.path.join(current_d, 'seed.img'), ram, vcpu=vcpu)
                 this_vm.update({'process': vm, 'mac': mac})
@@ -281,7 +290,7 @@ def start_multihost(jobname, jobpath, debug=False, oldconfig=None, config_dir='.
             this_vm['user'] = config[vm_c].get('user')
             if 'hostname' in config[vm_c]:
                 this_vm['hostname'] = config[vm_c].get('hostname')
-            log.info("IP of the new instance: {0}".format(this_vm.get('ip')))
+            log.info("IP of the new instance: %s", this_vm.get('ip'))
 
             vms[vm_c] = this_vm
         only_vms = vms.copy()
@@ -306,9 +315,8 @@ def start_multihost(jobname, jobpath, debug=False, oldconfig=None, config_dir='.
             ansible_inventory_path = os.path.join(seed_dir, 'tunir_ansible')
             create_ansible_inventory(only_vms, ansible_inventory_path)
 
-
         # This is where we test
-        status = run_job(jobpath,job_name=jobname,vms=vms, ansible_path=seed_dir, extra_config=extra_config)
+        status = run_job(jobpath, job_name=jobname, vms=vms, ansible_path=seed_dir, extra_config=extra_config)
     except Exception as e:
         import traceback
         exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -316,14 +324,14 @@ def start_multihost(jobname, jobpath, debug=False, oldconfig=None, config_dir='.
         traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
         print("*** print_exception:")
         traceback.print_exception(exc_type, exc_value, exc_traceback,
-                              limit=2, file=sys.stdout)
+                                  limit=2, file=sys.stdout)
 
     finally:
         if debug:
             filename = os.path.join(seed_dir, 'destroy.sh')
             with open(filename, 'w') as fobj:
                 for vm in only_vms.values():
-                    if not 'process' in vm: # For remote vm/bare metal
+                    if 'process' not in vm:  # For remote vm/bare metal
                         continue
                     job_pid = vm['process'].pid
                     fobj.write('kill -9 {0}\n'.format(job_pid))
@@ -334,10 +342,10 @@ def start_multihost(jobname, jobpath, debug=False, oldconfig=None, config_dir='.
             filename = os.path.join(seed_dir, 'hostnames.txt')
             with open(filename, 'w') as fobj:
                 for k, v in only_vms.items():
-                    fobj.write('{0}={1}\n'.format(k,v['ip']))
-            return status # Do not destroy for debug case
+                    fobj.write('{0}={1}\n'.format(k, v['ip']))
+            return status  # Do not destroy for debug case
         for vm in only_vms.values():
-            if not 'process' in vm: # For remote vm/bare metal
+            if 'process' not in vm:  # For remote vm/bare metal
                 continue
             job_pid = vm['process'].pid
             if debug:

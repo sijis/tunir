@@ -8,13 +8,14 @@ import codecs
 import logging
 import subprocess
 from collections import OrderedDict
-from typing import List, Dict, Set, Tuple, Union, Callable, TypeVar, Any, cast
+from typing import List, Dict, Set, Tuple, Callable, TypeVar, Any, cast
 log = logging.getLogger('tunir')
 
-T_Callable = TypeVar('T_Callable', bound=Callable[...,Any])
+T_Callable = TypeVar('T_Callable', bound=Callable[..., Any])
 T_Result = TypeVar('T_Result')
 
-STR = OrderedDict() # type: Dict[str, Dict[str, str]]
+STR = OrderedDict()  # type: Dict[str, Dict[str, str]]
+
 
 class Result(object):
     # type: (text) -> T_Result
@@ -27,8 +28,8 @@ class Result(object):
             clean_text = text.decode('utf-8')
         except AttributeError:
             clean_text = text
-        self.text = clean_text # type: str
-        self.return_code = None # type: int
+        self.text = clean_text  # type: str
+        self.return_code = None  # type: int
 
     @property
     def stdout(self):
@@ -44,16 +45,17 @@ class Result(object):
     def __unicode__(self):
         return unicode(self.text, encoding='utf-8', errors='replace')
 
+
 def match_vm_numbers(vm_keys, jobpath):
     """Matches vm definations mentioned in config, and in the job file.
 
     :param vm_keys: vm(s) from the configuration
     :param jobpath: Path to the job file.
     """
-    commands = [] # type: List[str]
+    commands = []  # type: List[str]
     with open(jobpath) as fobj:
         commands = fobj.readlines()
-    job_vms = {} # type: Dict[str, bool]
+    job_vms = {}  # type: Dict[str, bool]
     for command in commands:
         if re.search('^vm[0-9] ', command):
             index = command.find(' ')
@@ -70,6 +72,7 @@ def match_vm_numbers(vm_keys, jobpath):
         return False
     return True
 
+
 def create_ansible_inventory(vms, filepath):
     """Creates our inventory file for ansible
 
@@ -81,8 +84,8 @@ def create_ansible_inventory(vms, filepath):
     extra = ''
     for k, v in vms.items():
         # ip hostname format for /etc/hosts
-        hostname = v.get('hostname',k)
-        line = "{0} ansible_ssh_host={1} ansible_ssh_user={2}\n".format(hostname,v['ip'],v['user'])
+        hostname = v.get('hostname', k)
+        line = "{0} ansible_ssh_host={1} ansible_ssh_user={2}\n".format(hostname, v['ip'], v['user'])
         text += line
 
     dirpath = os.path.dirname(filepath)
@@ -95,9 +98,10 @@ def create_ansible_inventory(vms, filepath):
         if extra:
             fobj.write(extra)
 
+
 def run(host='127.0.0.1', port=22, user='root',
-                  password=None, command='/bin/true', bufsize=-1, key_filename='',
-                  timeout=120, pkey=None, debug=False):
+        password=None, command='/bin/true', bufsize=-1, key_filename='',
+        timeout=120, pkey=None, debug=False):
     # type(str, int, str, str, str, int, str, int, Any, bool) -> T_Result
     """
     Excecutes a command using paramiko and returns the result.
@@ -118,29 +122,28 @@ def run(host='127.0.0.1', port=22, user='root',
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     if password:
         client.connect(hostname=host, port=port,
-            username=user, password=password, banner_timeout=10)
+                       username=user, password=password, banner_timeout=10)
     elif key_filename:
         client.connect(hostname=host, port=port,
-            username=user, key_filename=key_filename, banner_timeout=10)
+                       username=user, key_filename=key_filename, banner_timeout=10)
     else:
         if debug:
             print('We have a key')
         client.connect(hostname=host, port=port,
-                username=user, pkey=pkey, banner_timeout=10)
+                       username=user, pkey=pkey, banner_timeout=10)
     chan = client.get_transport().open_session()
     chan.settimeout(timeout)
     chan.set_combine_stderr(True)
     chan.get_pty()
     chan.exec_command(command)
     stdout = chan.makefile('r', bufsize)
-    stderr = chan.makefile_stderr('r', bufsize)
     stdout_text = stdout.read()
-    stderr_text = stderr.read()
     out = Result(stdout_text)
     status = int(chan.recv_exit_status())
     client.close()
     out.return_code = status
     return out
+
 
 def clean_tmp_dirs(dirs):
     # type: (List[str]) -> None
@@ -148,6 +151,7 @@ def clean_tmp_dirs(dirs):
     for path in dirs:
         if os.path.exists(path) and path.startswith('/tmp'):
             shutil.rmtree(path)
+
 
 def system(cmd):
     # type: (str) -> Tuple[str, str, int]
@@ -158,10 +162,12 @@ def system(cmd):
     :return:  Tuple with (output, err, returncode).
     """
     ret = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True, universal_newlines=True)
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                           close_fds=True, universal_newlines=True)
     out, err = ret.communicate()
     returncode = ret.returncode
     return out, err, returncode
+
 
 def try_again(func):
     # type: (T_Callable) -> T_Callable
@@ -177,9 +183,9 @@ def try_again(func):
         return result
     return cast(T_Callable, wrapper)
 
+
 @try_again
-def execute(config, command, container=None):
-    # type: (Dict[str, Any], str, bool) -> Tuple[T_Result, str]
+def execute(config, command, container=None):  # type: (Dict[str, Any], str, bool) -> Tuple[T_Result, str]
     """
     Executes a given command based on the system.
     :param config: Configuration dictionary.
@@ -202,8 +208,8 @@ def execute(config, command, container=None):
         command = command[3:].strip()
 
     result = run(config['host_string'], config.get('port', '22'), config['user'],
-                     config.get('password', None), command, key_filename=config.get('key', None),
-                     timeout=config.get('timeout', 600), pkey=config.get('pkey', None))
+                 config.get('password', None), command, key_filename=config.get('key', None),
+                 timeout=config.get('timeout', 600), pkey=config.get('pkey', None))
 
     negative = command_status[command_type]
     if result.return_code != 0 and command_type is 'expect_failure':  # If the command does not fail, then it is a failure.
@@ -211,8 +217,8 @@ def execute(config, command, container=None):
 
     return result, negative
 
-def update_result(result, command, negative):
-    # type: (Result, str, str) -> bool
+
+def update_result(result, command, negative):  # type: (Result, str, str) -> bool
     """
     Updates the result based on input.
 
@@ -232,9 +238,8 @@ def update_result(result, command, negative):
             status = False
 
     d = {'command': command, 'result': str(result),
-         'ret': str(result.return_code), 'status': status} # type: Dict[str, Any]
+         'ret': str(result.return_code), 'status': status}  # type: Dict[str, Any]
     STR[command] = d
-
 
     if result.return_code != 0 and negative == 'no':
         # Save the error message and status as fail.
@@ -244,7 +249,7 @@ def update_result(result, command, negative):
 
 
 def run_job(jobpath, job_name='', extra_config={}, container=None,
-            port=None, vms=[], ansible_path='' ):
+            port=None, vms=[], ansible_path=''):
     """
     Runs the given command using paramiko.
 
@@ -265,7 +270,7 @@ def run_job(jobpath, job_name='', extra_config={}, container=None,
     # Now read the commands inside the job file
     # and execute them one by one, we need to save
     # the result too.
-    commands = [] # type: List[str]
+    commands = []  # type: List[str]
     status = True
     timeout_issue = False
     ssh_issue = False
@@ -287,10 +292,10 @@ def run_job(jobpath, job_name='', extra_config={}, container=None,
     try:
         for command in commands:
             negative = ''
-            result = Result('none') # type: Result
+            result = Result('none')  # type: Result
             command = command.strip(' \n')
             log.info("Next command: {0}".format(command))
-            if command.startswith('SLEEP'): # We will have to sleep
+            if command.startswith('SLEEP'):  # We will have to sleep
                 word = command.split(' ')[1]
                 print("Sleeping for %s." % word)
                 time.sleep(int(word))
@@ -298,8 +303,9 @@ def run_job(jobpath, job_name='', extra_config={}, container=None,
             elif command.startswith('PLAYBOOK'):
                 playbook_name = command.split(' ')[1]
                 playbook = os.path.join(ansible_path, playbook_name)
-                cmd = "ansible-playbook {0} -i {1} --private-key={2} --ssh-extra-args='-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'".format(playbook,\
-                            ansible_inventory_path, private_key_path)
+                cmd = "ansible-playbook {0} -i {1} --private-key={2} --ssh-extra-args='-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'".format(playbook,
+                                                                                                                                                            ansible_inventory_path,
+                                                                                                                                                            private_key_path)
                 print(cmd)
                 os.system(cmd)
                 continue
@@ -311,9 +317,9 @@ def run_job(jobpath, job_name='', extra_config={}, container=None,
                 # We have a command for multihost
                 index = command.find(' ')
                 vm_name = command[:index]
-                shell_command = command[index+1:]
+                shell_command = command[index + 1:]
                 config = vms[vm_name]
-            else: #At this case, all special keywords checked, now it will run on vm1
+            else:  # At this case, all special keywords checked, now it will run on vm1
                 vm_name = 'vm1'
                 shell_command = command
                 config = vms[vm_name]
@@ -323,7 +329,7 @@ def run_job(jobpath, job_name='', extra_config={}, container=None,
                 status = update_result(result, command, negative)
                 if not status:
                     break
-            except socket.timeout: # We have a timeout in the command
+            except socket.timeout:  # We have a timeout in the command
                 status = False
                 timeout_issue = True
                 log.error("We have a socket timeout.")
@@ -333,7 +339,7 @@ def run_job(jobpath, job_name='', extra_config={}, container=None,
                 ssh_issue = True
                 log.error("Getting SSHException.")
                 break
-            except Exception as err: #execute failed for some reason, we don't know why
+            except Exception as err:  # execute failed for some reason, we don't know why
                 status = False
                 print(err)
                 log.error(err)
@@ -344,7 +350,7 @@ def run_job(jobpath, job_name='', extra_config={}, container=None,
     finally:
         # Now for stateless jobs
         print("\n\nJob status: %s\n\n" % status)
-        nongating = {'number':0, 'pass':0, 'fail':0}
+        nongating = {'number': 0, 'pass': 0, 'fail': 0}
 
         with codecs.open(result_path, 'w', encoding='utf-8') as fobj:
             for key, value in STR.items():
@@ -352,7 +358,7 @@ def run_job(jobpath, job_name='', extra_config={}, container=None,
                 print("command: %s" % value['command'])
                 if value['command'].startswith((' ##', '##')):
                     nongating['number'] += 1
-                    if value['status'] == False:
+                    if not value['status']:
                         nongating['fail'] += 1
                     else:
                         nongating['pass'] += 1
@@ -363,12 +369,12 @@ def run_job(jobpath, job_name='', extra_config={}, container=None,
                 fobj.write("\n")
                 print("\n")
 
-            if timeout_issue: # We have 10 minutes timeout in the last command.
+            if timeout_issue:  # We have 10 minutes timeout in the last command.
                 msg = "Error: We have socket timeout in the last command."
                 fobj.write(msg)
                 print(msg)
 
-            if ssh_issue: # We have 10 minutes timeout in the last command.
+            if ssh_issue:  # We have 10 minutes timeout in the last command.
                 msg = "Error: SSH into the system failed."
                 fobj.write(msg)
                 print(msg)
@@ -383,7 +389,8 @@ Failed:{fail}""".format(**nongating)
             print(msg)
         return status
 
+
 class IPException(Exception):
     "We do not have an ip for a vm"
-    def __init__(self,*args,**kwargs):
-        Exception.__init__(self,*args,**kwargs)
+    def __init__(self, *args, **kwargs):
+        Exception.__init__(self, *args, **kwargs)
