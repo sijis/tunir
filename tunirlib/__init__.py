@@ -15,9 +15,6 @@ log.addHandler(JournalHandler(SYSLOG_IDENTIFIER='tunir'))
 log.setLevel(logging.DEBUG)
 
 
-STR = OrderedDict() # type: Dict[str, Dict[str, str]]
-
-
 def read_job_configuration(jobname='', config_dir='./'):
     """
     :param jobname: Name of the job
