@@ -64,7 +64,7 @@ def main(args):
     if not config: # Bad config name
         sys.exit(-1)
 
-    os.system('mkdir -p /var/run/tunir')
+    os.system('mkdir -p {0}'.format(args.tmpdir))
     if config['type'] == 'vm':
         status = start_multihost(job_name, jobpath, debug, config, args.config_dir)
         if status:
@@ -73,7 +73,7 @@ def main(args):
         sys.exit(return_code)
 
     if config['type'] == 'vagrant':
-        node, config = vagrant_and_run(config)
+        node, config = vagrant_and_run(config, path=args.tmpdir)
         if node.failed:
             run_job_flag = False
 
@@ -109,6 +109,7 @@ def startpoint():
                         default='./')
     parser.add_argument("--debug", help="Keep the vms running for debug in multihost mode.", action='store_true')
     parser.add_argument("--multi", help="The multivm configuration using .cfg configuration file")
+    parser.add_argument('--tmpdir', help='Temporary directory to use.', default='/var/run/tunir')
     args = parser.parse_args()
 
     main(args)
