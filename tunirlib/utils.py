@@ -121,16 +121,18 @@ def run(host='127.0.0.1', port=22, user='root',
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     if password:
-        client.connect(hostname=host, port=port,
-                       username=user, password=password, banner_timeout=10)
+        options = {'hostname': host, 'port': port, 'username': user,
+                   'password': password, 'banner_timeout': 10}
     elif key_filename:
-        client.connect(hostname=host, port=port,
-                       username=user, key_filename=key_filename, banner_timeout=10)
+        options = {'hostname': host, 'port': port, 'username': user,
+                   'key_filename': key_filename, 'banner_timeout': 10}
     else:
         if debug:
             print('We have a key')
-        client.connect(hostname=host, port=port,
-                       username=user, pkey=pkey, banner_timeout=10)
+        options = {'hostname': host, 'port': port, 'username': user,
+                   'pkey': pkey, 'banner_timeout': 10}
+
+    client.connect(**options)
     chan = client.get_transport().open_session()
     chan.settimeout(timeout)
     chan.set_combine_stderr(True)
